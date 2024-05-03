@@ -1,12 +1,19 @@
 # Fubon
 
+## NodeJS 安裝
+1. 下載並安裝 [NodeJS 20.12.2](https://nodejs.org/en/download/current)
 
+2. 進入專案資料夾中的 client 資料夾
+```bash
+cd .../Project/client
+npm install
+```
 ## Python 安裝
 
 1. 下載並安裝 [Python 3.12.2](https://www.python.org/downloads/release/python-3122/)
 
-2. 用 [pip](https://pip.pypa.io/en/stable/) 安裝所有需要的套件 
-
+2. 
+用 [pip](https://pip.pypa.io/en/stable/) 安裝所有需要的套件 
 ```bash
 pip install -r requirements.txt
 ```
@@ -27,8 +34,15 @@ ollama serve
 # 跳出 Error 就是正在運行
 Error: listen tcp 127.0.0.1:11434: bind: Only one usage of each socket address (protocol/network address/port) is normally permitted.
 ```
-3. 進入專案資料夾後執行
+2. 進入專案資料夾後執行後端程式
 
 ```bash
 python app.py
+```
+
+3. 進入專案資料夾的 client 後執行前端程式
+
+```bash
+cd .../Project/client
+npm start
 ```
