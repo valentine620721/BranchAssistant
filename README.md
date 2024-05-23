@@ -22,6 +22,7 @@ pip install -r requirements.txt
 2. 使用 Ollama
 ```bash
 Ollama run mistral
+Ollama pull shaw/dmeta-embedding-zh
 ```
 3. 可以從 [Ollama library](https://ollama.com/library) 找到可以用的模型
 
