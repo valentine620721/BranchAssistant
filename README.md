@@ -3,7 +3,8 @@
 ## NodeJS Prebulit Binaries
 1. 下載並解壓縮 [NodeJS 20.XX.X LTS](https://nodejs.org/en/download/current)
 ![image](https://github.com/valentine620721/BranchAssistant/assets/48355136/9bd680a3-8a6c-42f3-a89d-33f23d72229b)
-
+2. 將 node 資料夾的路徑加入環境變數
+![image](https://github.com/valentine620721/BranchAssistant/assets/48355136/152819dc-d2a8-4080-aab0-7a4cea82ed05)
 3. 進入專案資料夾中的 client 資料夾
 ```bash
 cd .../Project/client
