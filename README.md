@@ -1,9 +1,10 @@
 # Fubon
 
-## NodeJS 安裝
-1. 下載並安裝 [NodeJS 20.12.2](https://nodejs.org/en/download/current)
+## NodeJS Prebulit Binaries
+1. 下載並解壓縮 [NodeJS 20.XX.X LTS](https://nodejs.org/en/download/current)
+![image](https://github.com/valentine620721/BranchAssistant/assets/48355136/9bd680a3-8a6c-42f3-a89d-33f23d72229b)
 
-2. 進入專案資料夾中的 client 資料夾
+3. 進入專案資料夾中的 client 資料夾
 ```bash
 cd .../Project/client
 npm install
