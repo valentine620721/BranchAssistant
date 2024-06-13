@@ -23,7 +23,7 @@ pip install -r requirements.txt
 1. 下載並安裝 [Ollama](https://ollama.com/download)
 2. 使用 Ollama
 ```bash
-Ollama run mistral or Ollama run phi3
+Ollama run mistral or Ollama run phi3 or Ollama run qwen2:7b
 Ollama pull shaw/dmeta-embedding-zh
 ```
 3. 可以從 [Ollama library](https://ollama.com/library) 找到可以用的模型
