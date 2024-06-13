@@ -24,6 +24,7 @@ pip install -r requirements.txt
 2. 使用 Ollama
 ```bash
 Ollama run mistral or Ollama run phi3 or Ollama run qwen2:7b
+## 模型:參數量 ，不加參數代表預設參數版本，各模型預設版本可由Ollama Library查詢
 Ollama pull shaw/dmeta-embedding-zh
 ```
 3. 可以從 [Ollama library](https://ollama.com/library) 找到可以用的模型
