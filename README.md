@@ -8,7 +8,7 @@
 3. 進入專案資料夾中的 client 資料夾
 ```bash
 cd .../client
-npm install
+npm install --verbose
 ```
 ## Python 安裝
 
