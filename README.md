@@ -29,7 +29,7 @@ Ollama pull shaw/dmeta-embedding-zh
 ```
 3. 可以從 [Ollama library](https://ollama.com/library) 找到可以用的模型
 
-
+註: 模型下載完畢，若進入管理介面，可以輸入 /bye退出。
 ## 運行程式
 1. 確定 Ollama 正在運行
 ```bash
