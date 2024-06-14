@@ -50,3 +50,11 @@ python app.py
 cd .../Project/client
 npm start
 ```
+
+4. 安裝過程中可能會遇到 postcss-normalize 無法安裝問題，因此將已經下載並編譯好的 postcss-normalize，放入 client/node_modules 資料夾中。
+```bash
+npm error An unknown git error occurred
+npm error command git --no-replace-objects ls-remote ssh://git@github.com/csstools/normalize.css.git
+npm error ssh: connect to host github.com port 22: Connection refused
+npm error fatal: Could not read from remote repository.
+```
