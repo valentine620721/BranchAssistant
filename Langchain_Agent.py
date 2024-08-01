@@ -20,7 +20,9 @@ from langchain_community.llms import Ollama
 
 # llm = Ollama(model = "llama3", temperature = 0, num_predict=320)
 # llm2 = Ollama(model = "gemma:2b", temperature = 0.2)
-llm = Ollama(model = "llama3", top_k=1) #llama3-chatqa:8b, qwen:4b(Alibaba), aya:8b(Cohere), phi3 (3.8B)(Microsoft), gemma:2b zhaoyun/phi3-128k-chinese
+llm = Ollama(model = "gemma2", top_k=1) #llama3-chatqa:8b, qwen:4b(Alibaba), aya:8b(Cohere), phi3 (3.8B)(Microsoft), gemma:2b zhaoyun/phi3-128k-chinese
+llm2 = Ollama(model = "gemma2", top_k=1)
+llm3 = Ollama(model = "gemma2", top_k=1)
 
 SummaryFunc = getSummary(llm) # 宣告一個儲存資料和做總結的物件
 RetrievalQA = getFAISS(llm)
@@ -102,7 +104,7 @@ def parse_question(msg):
     print("Processing ...")
     return llm.invoke(prompt.format(input=msg))
 
-def generate_tables_name(table_inform, msg):
+def generate_tables_name(table_inform, msg, llm):
     system = f'''
         {table_inform}
         Metadata shows what fields include in that table.
@@ -134,8 +136,7 @@ def generate_table_inform(table_inform, msg):
         2. Fields(values) to be used: Field1 | Metadata1 | Datatype1, ...
         3. Fields(strings) to be used: Field1 | Metadata1 | Datatype1, ...
         4. Fields(dates) to be used: Field1 | Metadata1 | Datatype1, ...
-        ```<END>
-
+        ```
     '''
 
     human = '''{input}'''
@@ -150,26 +151,30 @@ def generate_table_inform(table_inform, msg):
     return llm.invoke(prompt.format(input=msg))
 
 
-def generate_SQL(table_inform, msg):
+def generate_SQL(table_inform, msg, llm):
     print("input: " + msg + "\n")
     system_sql = f'''
-    
-    Information:
+
     {table_inform}
 
-    First, Follow the Rules:
-    1. Only use Field Name in SQL.
-    2. Parse the Field information as format 'Field Name | Metadata | Datatype'.
-    3. '最近一次' represents the latest date.
-    
-    Avoid Error:
-    1. Binder Error: column XXX must appear in the GROUP BY clause or must be part of an aggregate function.
+    First, Parse out the (values, strings, dates) in the question, then fill the answer below:
+    1. Tables: Table Name (ex. table1 or table1 JOIN tables2 on table1.Field=table2.Field)
+    2. Fields(values) to be used: Field1 | Metadata1 | Datatype1, ...
+    3. Fields(strings) to be used: 
+    4. Fields(dates) to be used: 
 
-    Then, thought how to return the correct answer to question with SQL query.
+
+    Then, Follow the Rules:
+    1. Only use Field Name in SQL.
+    2. Field Name in SQL must be as same as information provided.
+    3. If user request person or product information, must use the Name Field.
+
+    And avoid Error:
+    1. Binder Error: column XXX must appear in the GROUP BY clause or must be part of an aggregate function.
 
     Finally, answer as format 
     ```sql
-        SELECT DISTINCT ... FROM ... ;
+        SELECT DISTINCT XXX FROM XXX;
     ```, SQL command must end by ';'
     '''
     # 1. Give the Date field as format 'YYYYMMDD', ex. Date field = '20240101'
@@ -199,7 +204,7 @@ def generate_SQL(table_inform, msg):
     return llm.invoke(prompt.format(input=msg))
 
 def query_by_SQL():
-    tables = generate_tables_name(get_metadata(SummaryFunc.database), SummaryFunc.Input_Question)
+    tables = generate_tables_name(get_metadata(SummaryFunc.database), SummaryFunc.Input_Question, llm2) # Ollama(model = model2, top_k=1)
     print(f'tables: {tables}')
     
     with open(SummaryFunc.database+"tables.txt", 'r', encoding='utf-8') as file:
@@ -211,11 +216,11 @@ def query_by_SQL():
         print(f"--table--: {table_name}\n")
         if table_name.strip() != '':
             table_inform += get_fields(lines, table_name) + "\n"
-    # table_inform = get_fields(SummaryFunc.database) + "\n"
+
     print(table_inform)
-    table_inform = generate_table_inform(table_inform, SummaryFunc.Input_Question) + "\n"
-    print(f"Table Inform: {table_inform}")
-    sqlCommand = generate_SQL(table_inform, SummaryFunc.Input_Question)  # + f'\n\n{SummaryFunc.Action_Output}'
+    # table_inform = generate_table_inform(table_inform, SummaryFunc.Input_Question) + "\n"
+    # print(f"Table Inform: {table_inform}")
+    sqlCommand = generate_SQL(table_inform, SummaryFunc.Input_Question, llm3)  # Ollama(model = model3, top_k=1)
     print(f"LLM Output: {sqlCommand}")
     return SummaryFunc.store_dataset(getCsvDataset.dataset_query_sql(SummaryFunc.database, sqlCommand))
 
@@ -245,8 +250,10 @@ def reload():
     # === searchFileInput ===
     class SearchFileInput(BaseModel):
         action_input: str = Field(description=f'''
-        .
-
+            Metadata shows what fields include in that table.
+            List all Table Name to be queried and JOIN, not SQL.
+            Ex: table1, table2, table3
+            No more explanations or messages, only Table Name.
         ''')
 
     def search_from_file(action_input: str) -> str:
