@@ -22,7 +22,7 @@ from langchain_community.llms import Ollama
 # llm2 = Ollama(model = "gemma:2b", temperature = 0.2)
 llm = Ollama(model = "gemma2", top_k=1) #llama3-chatqa:8b, qwen:4b(Alibaba), aya:8b(Cohere), phi3 (3.8B)(Microsoft), gemma:2b zhaoyun/phi3-128k-chinese
 llm2 = Ollama(model = "gemma2", top_k=1)
-llm3 = Ollama(model = "gemma2", top_k=1)
+llm3 = Ollama(model = "mistral", top_k=1)
 
 SummaryFunc = getSummary(llm) # 宣告一個儲存資料和做總結的物件
 RetrievalQA = getFAISS(llm)
@@ -67,30 +67,25 @@ def parse_question(msg):
         Ex:
         Q. 給我所有基金和債券的商品名稱
         A.
-        ```
         1.商品名稱
-        ```
+
         Q. 給我所有基金或債券形式的商品名稱
         A.
-        ```
         1. 商品名稱
         2. 商品形式
-        ```
+
         Q. 請給我每個員工在2023年內的平均業績
         A.
-        ```
         1. 每個員工
         2. 2023年
         3. 平均業績
-        ```
+
         Q. 在2023/02/24前，員工吳光磊跟客戶王曉明的交易金額>20000的資料
         A.
-        ```
         1. 2023/02/24
         2. 員工吳光磊
         3. 客戶王曉明
         4. 交易金額>20000
-        ```
     '''
 
     human = '''{input}'''
@@ -107,36 +102,11 @@ def parse_question(msg):
 def generate_tables_name(table_inform, msg, llm):
     system = f'''
         {table_inform}
+
         Metadata shows what fields include in that table.
         List all Table Name to be queried and JOIN, not SQL.
         Ex: table1, table2, table3
-        No more explanations or messages, only Table Name.
-    '''
-
-    human = '''{input}'''
-
-    prompt = ChatPromptTemplate.from_messages(
-        [
-            ("system", system),
-            ("human", human),
-        ]
-    )
-    print("Processing ...")
-    return llm.invoke(prompt.format(input=msg))
-
-def generate_table_inform(table_inform, msg):
-    system = f'''
-        {table_inform}
-
-        If user request '最近一次', must fill the relative Date Field.
-        If user request person or product information, must fill the Name Field.
-        Parse out the (values, strings, dates) in the question, then fill the answer below
-        ```
-        1. Tables: Table Name (ex. table1 or table1 JOIN tables2 on table1.Field=table2.Field)
-        2. Fields(values) to be used: Field1 | Metadata1 | Datatype1, ...
-        3. Fields(strings) to be used: Field1 | Metadata1 | Datatype1, ...
-        4. Fields(dates) to be used: Field1 | Metadata1 | Datatype1, ...
-        ```
+        No more explanations or messages, only Table Name and split by ','.
     '''
 
     human = '''{input}'''
@@ -154,27 +124,23 @@ def generate_table_inform(table_inform, msg):
 def generate_SQL(table_inform, msg, llm):
     print("input: " + msg + "\n")
     system_sql = f'''
-
     {table_inform}
 
-    First, Parse out the (values, strings, dates) in the question, then fill the answer below:
-    1. Tables: Table Name (ex. table1 or table1 JOIN tables2 on table1.Field=table2.Field)
-    2. Fields(values) to be used: Field1 | Metadata1 | Datatype1, ...
-    3. Fields(strings) to be used: 
-    4. Fields(dates) to be used: 
-
-
-    Then, Follow the Rules:
+    First, Follow the Rules:
     1. Only use Field Name in SQL.
-    2. Field Name in SQL must be as same as information provided.
-    3. If user request person or product information, must use the Name Field.
+    2. Field Name in SQL must be as same as in aboved Field Information.
+    3. Prefer name field over ID field
 
-    And avoid Error:
-    1. Binder Error: column XXX must appear in the GROUP BY clause or must be part of an aggregate function.
+    Then, Follow the example:
+    1. 問題中有與'總數'、'總'相關字詞： SELECT SUM() FROM ... GROUP BY ...;
+    2. 問題中有與'筆數'相關字詞: SELECT COUNT() FROM ... ;
+    3. 問題要求'包含 XXX, OOO' : SELECT XXX, OOO, ... FROM ... ;
+    4. 問題需要不只一個 table 的欄位： SELECT ... FROM table1 JOIN table1.XXX ON table2.OOO ...;
+
 
     Finally, answer as format 
     ```sql
-        SELECT DISTINCT XXX FROM XXX;
+        SELECT (DISTINCT) ... FROM ...;
     ```, SQL command must end by ';'
     '''
     # 1. Give the Date field as format 'YYYYMMDD', ex. Date field = '20240101'
@@ -205,21 +171,19 @@ def generate_SQL(table_inform, msg, llm):
 
 def query_by_SQL():
     tables = generate_tables_name(get_metadata(SummaryFunc.database), SummaryFunc.Input_Question, llm2) # Ollama(model = model2, top_k=1)
-    print(f'tables: {tables}')
+    print(f'Tables: {tables}')
     
     with open(SummaryFunc.database+"tables.txt", 'r', encoding='utf-8') as file:
         lines = file.read().split('\n')
 
-    table_inform = lines[0]+ '\n'
+    table_inform = f'Tables: {tables}\n{lines[0]}\n'
 
     for table_name in tables.split(','):
-        print(f"--table--: {table_name}\n")
+        # print(f"--table--: {table_name}\n")
         if table_name.strip() != '':
             table_inform += get_fields(lines, table_name) + "\n"
 
     print(table_inform)
-    # table_inform = generate_table_inform(table_inform, SummaryFunc.Input_Question) + "\n"
-    # print(f"Table Inform: {table_inform}")
     sqlCommand = generate_SQL(table_inform, SummaryFunc.Input_Question, llm3)  # Ollama(model = model3, top_k=1)
     print(f"LLM Output: {sqlCommand}")
     return SummaryFunc.store_dataset(getCsvDataset.dataset_query_sql(SummaryFunc.database, sqlCommand))
