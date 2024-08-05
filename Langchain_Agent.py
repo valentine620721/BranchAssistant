@@ -66,26 +66,27 @@ def parse_question(msg):
         parse question into key points, then output answer as format
         Ex:
         Q. 給我所有基金和債券的商品名稱
-        A.
         1.商品名稱
 
         Q. 給我所有基金或債券形式的商品名稱
-        A.
         1. 商品名稱
         2. 商品形式
 
         Q. 請給我每個員工在2023年內的平均業績
-        A.
         1. 每個員工
         2. 2023年
         3. 平均業績
 
         Q. 在2023/02/24前，員工吳光磊跟客戶王曉明的交易金額>20000的資料
-        A.
         1. 2023/02/24
         2. 員工吳光磊
         3. 客戶王曉明
         4. 交易金額>20000
+
+        Q. 請給我2023年業績最高的員工
+        1. 2023年
+        2. 業績最高
+        3. 員工
     '''
 
     human = '''{input}'''
@@ -126,21 +127,20 @@ def generate_SQL(table_inform, msg, llm):
     system_sql = f'''
     {table_inform}
 
-    First, Follow the Rules:
-    1. Only use Field Name in SQL.
-    2. Field Name in SQL must be as same as in aboved Field Information.
-    3. Prefer name field over ID field
-
-    Then, Follow the example:
+    First, Follow the example:
     1. 問題中有與'總數'、'總'相關字詞： SELECT SUM() FROM ... GROUP BY ...;
     2. 問題中有與'筆數'相關字詞: SELECT COUNT() FROM ... ;
-    3. 問題要求'包含 XXX, OOO' : SELECT XXX, OOO, ... FROM ... ;
+    3. 問題要求'包含 XXX, OOO' : SELECT table.XXX, table.OOO, ... FROM ... ;
     4. 問題需要不只一個 table 的欄位： SELECT ... FROM table1 JOIN table1.XXX ON table2.OOO ...;
+    5. 問題中有與日期相關字詞： SELECT ... FROM ... WHERE dates condition ... ;
+
+    Then, Follow the Rules:
+    1. Prefer name field over ID field
 
 
     Finally, answer as format 
     ```sql
-        SELECT (DISTINCT) ... FROM ...;
+        SELECT (DISTINCT) table.XXX, ... FROM  table, ...;
     ```, SQL command must end by ';'
     '''
     # 1. Give the Date field as format 'YYYYMMDD', ex. Date field = '20240101'
@@ -171,7 +171,7 @@ def generate_SQL(table_inform, msg, llm):
 
 def query_by_SQL():
     tables = generate_tables_name(get_metadata(SummaryFunc.database), SummaryFunc.Input_Question, llm2) # Ollama(model = model2, top_k=1)
-    print(f'Tables: {tables}')
+    # print(f'Tables: {tables}')
     
     with open(SummaryFunc.database+"tables.txt", 'r', encoding='utf-8') as file:
         lines = file.read().split('\n')
