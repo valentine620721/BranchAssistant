@@ -63,7 +63,7 @@ def get_tables_name(directory):
 
 def parse_question(msg):
     system = f'''
-        parse question into key points, then output answer as format
+        parse question into key points, then output answer as format in chinese.
         Ex:
         Q. 給我所有基金和債券的商品名稱
         1.商品名稱
@@ -125,25 +125,23 @@ def generate_tables_name(table_inform, msg, llm):
 def generate_SQL(table_inform, msg, llm):
     print("input: " + msg + "\n")
     system_sql = f'''
+
     {table_inform}
 
     First, Follow the example:
-    1. 問題中有與'總數'、'總'相關字詞： SELECT SUM() FROM ... GROUP BY ...;
-    2. 問題中有與'筆數'相關字詞: SELECT COUNT() FROM ... ;
-    3. 問題要求'包含 XXX, OOO' : SELECT table.XXX, table.OOO, ... FROM ... ;
-    4. 問題需要不只一個 table 的欄位： SELECT ... FROM table1 JOIN table1.XXX ON table2.OOO ...;
-    5. 問題中有與日期相關字詞： SELECT ... FROM ... WHERE dates condition ... ;
+    1. 問題中有與'總數'、'總'相關字詞： SELECT SUM(table_name.field_name) FROM table GROUP BY table_name.field_name;
+    2. 問題中有與'筆數'相關字詞: SELECT COUNT();
+    3. 問題要求'包含 field1 field2' : SELECT table_name.field_name1, table_name.field_name2;
+    4. 問題需要不只一個 table 的欄位： FROM table_name1 JOIN table_name1.field_name1 ON table_name2.field_name2;
+    5. 問題中有與日期相關字詞： WHERE dates condition;
+    6. 問題中有與'最高'、'最低'相關字詞： ORDER BY table_name.field_name (DESC or ASC) LIMIT n;
 
-    Then, Follow the Rules:
-    1. Prefer name field over ID field
-
-
-    Finally, answer as format 
+    Then, answer as format 
     ```sql
-        SELECT (DISTINCT) table.XXX, ... FROM  table, ...;
+        SELECT (DISTINCT) table_name.field_name FROM table_name;
     ```, SQL command must end by ';'
     '''
-    # 1. Give the Date field as format 'YYYYMMDD', ex. Date field = '20240101'
+    # 1. Give the Date field as format 'YYYYMMDD', ex. Date field = '20240101'     2. SELECT 'table_name.field_name' in SQL.
     # 2. If input question said before the Date, then let Date field <= '20240101' in SQL command
     # 4. Use SELECT * when user ask the entire data.
     # 2. Use SELECT * when user ask the entire data.
@@ -176,7 +174,7 @@ def query_by_SQL():
     with open(SummaryFunc.database+"tables.txt", 'r', encoding='utf-8') as file:
         lines = file.read().split('\n')
 
-    table_inform = f'Tables: {tables}\n{lines[0]}\n'
+    table_inform = f'table: {tables}\n{lines[0]}\n'
 
     for table_name in tables.split(','):
         # print(f"--table--: {table_name}\n")
@@ -185,6 +183,7 @@ def query_by_SQL():
 
     print(table_inform)
     sqlCommand = generate_SQL(table_inform, SummaryFunc.Input_Question, llm3)  # Ollama(model = model3, top_k=1)
+    sqlCommand = sqlCommand.replace('`', '')
     print(f"LLM Output: {sqlCommand}")
     return SummaryFunc.store_dataset(getCsvDataset.dataset_query_sql(SummaryFunc.database, sqlCommand))
 
