@@ -37,8 +37,8 @@ RetrievalQA = getFAISS(llm)
 def get_fields(lines, table_name):    
     result = ''
     for field in lines[1:]:
-        if ((table_name.strip()) in field.split('|')[0]):
-            result += (field+'\n')
+        if ((strip()) in field.split('|')[0]):
+            result += (field.split('.')[-1]+'\n')
 
     return result
 
@@ -103,11 +103,10 @@ def parse_question(msg):
 def generate_tables_name(table_inform, msg, llm):
     system = f'''
         {table_inform}
-
-        Metadata shows what fields include in that table.
-        List all Table Name to be queried and JOIN, not SQL.
-        Ex: table1, table2, table3
-        No more explanations or messages, only Table Name and split by ','.
+        
+        List all 'table_name' that is related to question.
+        Ex: table_name_1, table_name_2
+        No more explanations or messages, only 'table_name' and split by ','.
     '''
 
     human = '''{input}'''
@@ -125,23 +124,29 @@ def generate_tables_name(table_inform, msg, llm):
 def generate_SQL(table_inform, msg, llm):
     print("input: " + msg + "\n")
     system_sql = f'''
-
     {table_inform}
 
-    First, Follow the example:
-    1. 問題中有與'總數'、'總'相關字詞： SELECT SUM(table_name.field_name) FROM table GROUP BY table_name.field_name;
-    2. 問題中有與'筆數'相關字詞: SELECT COUNT();
-    3. 問題要求'包含 field1 field2' : SELECT table_name.field_name1, table_name.field_name2;
-    4. 問題需要不只一個 table 的欄位： FROM table_name1 JOIN table_name1.field_name1 ON table_name2.field_name2;
-    5. 問題中有與日期相關字詞： WHERE dates condition;
-    6. 問題中有與'最高'、'最低'相關字詞： ORDER BY table_name.field_name (DESC or ASC) LIMIT n;
+    First, follow the example:
+    1. 問題中有與'總數'、'總'相關字詞： SELECT SUM(field_name) FROM table_name GROUP BY field_name
+    2. 問題中有與'筆數'相關字詞: SELECT COUNT() GROUP BY field_name
+    3. 問題需要不只一個 table 的欄位： table_name1 JOIN table_name2 ON table_name1.field_name1 = table_name2.field_name2 
+    4. 問題中有與日期相關字詞： WHERE date_field_name condition
+    5. 問題中有與'最高'、'最低'相關字詞： ORDER BY field_name (DESC or ASC) LIMIT n;
+    6. 字串匹配優先使用： WHERE field_name LIKE '%STRING%'
 
-    Then, answer as format 
+    Then, follow the rules:
+    1. WHERE clause cannot contain aggregates! (use HAVING aggregate > n)
+    2. SELECT FROM all table that need to be queried.
+    3. Don't use field_name about symbol, ID or code to query, if there is no requirement.
+
+    Finally, answer as format 
     ```sql
-        SELECT (DISTINCT) table_name.field_name FROM table_name;
+        SELECT (DISTINCT) field_name FROM table_name;
     ```, SQL command must end by ';'
     '''
-    # 1. Give the Date field as format 'YYYYMMDD', ex. Date field = '20240101'     2. SELECT 'table_name.field_name' in SQL.
+    # Catalog Error: Scalar Function with name date does not exist!
+    # 問題需要不只一個 table 的欄位： FROM table_name1 JOIN table_name2 ON table_name1.field_name1 = table_name2.field_name2
+    # 1. Give the Date field as format 'YYYYMMDD', ex. Date field = '20240101'
     # 2. If input question said before the Date, then let Date field <= '20240101' in SQL command
     # 4. Use SELECT * when user ask the entire data.
     # 2. Use SELECT * when user ask the entire data.
@@ -168,21 +173,23 @@ def generate_SQL(table_inform, msg, llm):
     return llm.invoke(prompt.format(input=msg))
 
 def query_by_SQL():
-    tables = generate_tables_name(get_metadata(SummaryFunc.database), SummaryFunc.Input_Question, llm2) # Ollama(model = model2, top_k=1)
+    tables = generate_tables_name(get_metadata(SummaryFunc.database), SummaryFunc.Input_Question, llm) # Ollama(model = model2, top_k=1)
     # print(f'Tables: {tables}')
     
     with open(SummaryFunc.database+"tables.txt", 'r', encoding='utf-8') as file:
         lines = file.read().split('\n')
 
-    table_inform = f'table: {tables}\n{lines[0]}\n'
+    table_inform = f'table_name: {tables}\n'
+    # table_inform = ""
 
     for table_name in tables.split(','):
         # print(f"--table--: {table_name}\n")
-        if table_name.strip() != '':
+        table_inform += f'{lines[0].replace('table_name', table_name.strip())}\n'
+        if strip() != '':
             table_inform += get_fields(lines, table_name) + "\n"
 
     print(table_inform)
-    sqlCommand = generate_SQL(table_inform, SummaryFunc.Input_Question, llm3)  # Ollama(model = model3, top_k=1)
+    sqlCommand = generate_SQL(table_inform, SummaryFunc.Input_Question, llm)  # Ollama(model = model3, top_k=1)
     sqlCommand = sqlCommand.replace('`', '')
     print(f"LLM Output: {sqlCommand}")
     return SummaryFunc.store_dataset(getCsvDataset.dataset_query_sql(SummaryFunc.database, sqlCommand))
