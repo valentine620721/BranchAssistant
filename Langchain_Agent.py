@@ -63,28 +63,69 @@ def parse_question(msg):
     system = f'''
         parse question into key points, then output answer as format in chinese.
         Ex:
-        Q. 給我所有基金和債券的商品名稱
-        1.商品名稱
+        Q. 告訴我2025/04/23到期的債券類型產品。 包含產品名稱及到期日。
+        A.
+        資料條件：
+        1. 2025/04/23到期
+        2. 債券類型
+        3. 產品
+        資料欄位：
+        1. 產品名稱
+        2. 到期日
 
-        Q. 給我所有基金或債券形式的商品名稱
-        1. 商品名稱
-        2. 商品形式
+        Q. 告訴我2021年全年銷售總額第二高的基金類型的產品。 包含產品名稱與總銷售金額。
+        A.
+        資料條件：
+        1. 2021年
+        2. 全年銷售總額
+        3. 第二高
+        4. 基金類型
+        5. 產品
+        資料欄位：
+        1. 產品名稱
+        2. 總銷售金額
 
-        Q. 請給我每個員工在2023年內的平均業績
-        1. 每個員工
-        2. 2023年
-        3. 平均業績
+        Q. 告訴我Email為tracy35@example.org的客戶最近一次購買的產品，包含產品名稱與購買日期。
+        A.
+        資料條件：
+        1. Email為tracy35@example.org
+        2. 客戶
+        3. 最近一次
+        4. 購買的產品
+        資料欄位：
+        1. 產品名稱
+        2. 購買日期
 
-        Q. 在2023/02/24前，員工吳光磊跟客戶王曉明的交易金額>20000的資料
-        1. 2023/02/24
-        2. 員工吳光磊
-        3. 客戶王曉明
-        4. 交易金額>20000
-
-        Q. 請給我2023年業績最高的員工
-        1. 2023年
-        2. 業績最高
+        Q. 告訴我所有出生日期在1990年前的員工的總業績金額。包含員工姓名與業績總額。
+        A.
+        資料條件：
+        1. 所有
+        2. 出生日期在1990年前
         3. 員工
+        4. 總業績金額
+        資料欄位：
+        1. 員工姓名
+        2. 業績總額
+
+        Q. 告訴我所有年齡大於50歲客戶的交易記錄，包含客戶姓名與每筆交易金額。
+        A.
+        資料條件：
+        1. 所有
+        2. 年齡大於50歲
+        3. 客戶
+        4. 交易記錄
+        資料欄位：
+        1. 客戶姓名
+        2. 每筆交易金額
+
+        Q. 告訴我員工賴芯菡已完成的交易筆數。包含員工姓名。
+        A.
+        資料條件：
+        1. 員工賴芯菡
+        2. 已完成
+        3. 交易筆數
+        資料欄位：
+        1. 員工姓名
     '''
 
     human = '''{input}'''
@@ -127,7 +168,7 @@ def generate_SQL(table_inform, msg, llm):
     First, follow the example:
     1. 問題中有與'總數'、'總'相關字詞： SELECT SUM() FROM table_name GROUP BY
     2. 問題中有與'筆數'相關字詞: SELECT COUNT() GROUP BY
-    3. 問題需要不只一個 table 的欄位： JOIN ON fields with different name in different tables
+    3. 問題需要不只一個 table 的欄位： JOIN ON fields with diferent name in different tables
     4. 問題中有與日期'年'、'月'相關字詞： YEAR() or MONTH()
     5. 問題中有與'最'、'第n高'相關字詞： ORDER BY field_name (DESC or ASC) LIMIT 1 (OFFSET n-1);
     6. 字串匹配優先使用： WHERE field_name LIKE '%STRING%'
