@@ -15,6 +15,9 @@ from langchain.agents import AgentExecutor
 
 import os
 
+import difflib
+import re
+
 # === LLM ===
 from langchain_community.llms import Ollama
 
@@ -34,13 +37,13 @@ RetrievalQA = getFAISS(llm)
 
 def get_fields(lines, table_name):    
     result = ''
+    columns_list = []
     for field in lines[1:]:
         if ((table_name.strip()) in field.split('|')[0]):
             result += (field.split('.')[-1]+'\n')
+            columns_list.append(field.split('|')[0].split('.')[-1].strip())
 
-    return result
-
-
+    return result, columns_list
 
 
 def get_metadata(directory):    
@@ -58,6 +61,38 @@ def get_tables_name(directory):
     
     return ", ".join(name for name in name_list)
 
+def extract_select_columns(sql):
+    select_columns = []
+    pattern = r'SELECT(.*?)FROM'
+    for columns_string in re.findall(pattern, sql):
+        columns_list = columns_string.split(',')
+        
+        for column in columns_list:
+            match = re.search(r'\((.*?)\)', column)
+            if match:
+                select_columns.append(match.group(1).strip().split('.')[-1])
+            else:
+                select_columns.append(column.strip().split('.')[-1])
+    return set(select_columns)
+
+def get_equal_rate(str1, str2):
+    return difflib.SequenceMatcher(None, str1, str2).quick_ratio()
+
+def return_top_similarity(wrong_column, compared_columns_list, topk=3):
+    ''' 
+        result:
+            [('CUS001', 0.8333333333333334),
+            ('CN002', 0.7272727272727273),
+            ('TD002', 0.5454545454545454)]
+    '''
+
+    similarity = {}
+    for compared_column in compared_columns_list:
+        similarity[compared_column] = get_equal_rate(wrong_column, compared_column)
+
+    return sorted(similarity.items(), key=lambda item: item[1], reverse=True)[:topk]
+
+    
 
 def parse_question(msg):
     system = f'''
@@ -204,17 +239,32 @@ def query_by_SQL():
         lines = file.read().split('\n')
 
     table_inform = f'table_name: {tables}\n'
+    table_columns_list = []
     # table_inform = ""
 
     for table_name in tables.split(','):
         # print(f"--table--: {table_name}\n")
         table_inform += f"{lines[0].replace('table_name', table_name.strip())}\n"
         if table_name.strip() != '':
-            table_inform += get_fields(lines, table_name) + "\n"
+            temp_inform, temp_columns_list = get_fields(lines, table_name)
+            table_inform += temp_inform + "\n"
+            table_columns_list += temp_columns_list
 
     print(table_inform)
+    print("=====table_columns_list=====")
+    print(table_columns_list)
+
     sqlCommand = generate_SQL(table_inform, SummaryFunc.Input_Question, llm)  # Ollama(model = model3, top_k=1)
-    sqlCommand = sqlCommand.replace('`', '')
+    sqlCommand = sqlCommand[sqlCommand.find('SELECT'): sqlCommand.find(';')]
+
+    select_columns = extract_select_columns(sqlCommand)
+    for column in select_columns:
+        if column not in table_columns_list:
+            candidate_columns = return_top_similarity(column, table_columns_list)
+            print(candidate_columns)
+
+            sqlCommand = sqlCommand.replace(column, candidate_columns[0][0])
+
     SummaryFunc.sqlCommand = sqlCommand
 
     print(f"LLM Output: {sqlCommand}")
