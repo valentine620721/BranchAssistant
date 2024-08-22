@@ -96,7 +96,7 @@ def return_top_similarity(wrong_column, compared_columns_list, topk=3):
 
 def parse_question(msg):
     system = f'''
-        parse question into key points, then output answer as format in chinese.
+        parse question into several key points, then answer as format in chinese.
         Ex:
         Q. 告訴我2025/04/23到期的債券類型產品。 包含產品名稱及到期日。
         A.
@@ -257,6 +257,7 @@ def query_by_SQL():
     sqlCommand = generate_SQL(table_inform, SummaryFunc.Input_Question, llm)  # Ollama(model = model3, top_k=1)
     sqlCommand = sqlCommand[sqlCommand.find('SELECT'): sqlCommand.find(';')]
 
+    # 資料檢核改成  透過程式判斷欄位不存在時，用 LLM + 問題+不存在的欄位資訊做修正
     select_columns = extract_select_columns(sqlCommand)
     for column in select_columns:
         if column not in table_columns_list:
@@ -283,7 +284,7 @@ def reload():
         SummaryFunc.Action_Output = action_input
         SummaryFunc.for_sql = 'True'
 
-        return parse_question(SummaryFunc.Input_Question) + "\n\n 請問以上是否正確? 正確，請回答'1'，不正確，請回答'2'。"
+        return parse_question(SummaryFunc.Input_Question) 
 
     searchFromOracle = StructuredTool.from_function(
         func=search_from_oracle,
@@ -332,7 +333,7 @@ def reload():
         SummaryFunc.Action_Output = action_input
         SummaryFunc.for_sql = 'True'
 
-        return parse_question(SummaryFunc.Input_Question) + "\n\n 請問以上是否正確? 正確，請回答'1'，不正確，請回答'2'。"
+        return parse_question(SummaryFunc.Input_Question)
         
 
     searchFromSQL = StructuredTool.from_function(
